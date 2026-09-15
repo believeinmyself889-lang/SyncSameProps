@@ -1,0 +1,11 @@
+{
+  "name": "SyncSameProps - 批量同步修改相似属性",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "document",
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  }
+}

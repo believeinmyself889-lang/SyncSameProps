@@ -1,0 +1,18 @@
+{
+  "name": "sync-same-props",
+  "version": "2.0.1",
+  "private": true,
+  "description": "A Figma plugin for batch-editing matching properties from one reference object.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/believeinmyself889-lang/SyncSameProps.git"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "scripts": {
+    "test": "node --test test/code.test.mjs",
+    "check": "node --check code.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

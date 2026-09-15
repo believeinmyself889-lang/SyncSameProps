@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SyncSameProps</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0d0f11;
+    --panel: #15181b;
+    --raised: #1b1f23;
+    --line: #2a3035;
+    --line-bright: #3a4249;
+    --text: #f1f3ef;
+    --muted: #919b9d;
+    --faint: #626b6d;
+    --signal: #b8f34a;
+    --signal-soft: rgba(184, 243, 74, .12);
+    --cyan: #71d9e2;
+    --error: #ff746c;
+    font-family: "Bahnschrift", "DIN Alternate", "Microsoft YaHei UI", sans-serif;
+    font-size: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; overflow: hidden; color: var(--text); background: var(--bg); }
+  button { font: inherit; }
+  .shell { height: 100%; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; }
+
+  header { padding: 15px 16px 12px; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand-left { display: flex; align-items: center; gap: 10px; }
+  .mark { position: relative; width: 29px; height: 29px; border: 1px solid var(--line-bright); background: var(--raised); }
+  .mark::before, .mark::after { content: ""; position: absolute; background: var(--signal); }
+  .mark::before { width: 15px; height: 1px; left: 6px; top: 9px; box-shadow: 0 5px 0 var(--cyan), 0 10px 0 var(--muted); }
+  .mark::after { width: 3px; height: 3px; border-radius: 50%; left: 19px; top: 8px; box-shadow: -9px 5px 0 var(--cyan), -4px 10px 0 var(--muted); }
+  h1 { margin: 0; font-size: 13px; letter-spacing: .7px; font-weight: 650; }
+  .subtitle { margin-top: 2px; color: var(--muted); font: 10px/1.4 "Microsoft YaHei UI", sans-serif; }
+  .version { color: var(--faint); font: 9px/1 monospace; letter-spacing: .5px; }
+
+  .status-wrap { padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  .status { display: grid; grid-template-columns: 8px minmax(0,1fr) auto; align-items: center; gap: 9px; min-height: 34px; padding: 8px 10px; border: 1px solid var(--line); background: var(--panel); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+  .status.ready .status-dot { background: var(--signal); box-shadow: 0 0 8px rgba(184,243,74,.55); }
+  .status.warn .status-dot { background: #f2ba4d; }
+  .status-main { min-width: 0; }
+  #statusTitle { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #statusMeta { margin-top: 1px; color: var(--muted); font: 9.5px/1.3 "Microsoft YaHei UI", sans-serif; }
+  #matchCount { color: var(--signal); font: 17px/1 "Bahnschrift", sans-serif; }
+
+  .presets { padding: 0 16px 10px; display: flex; gap: 6px; border-bottom: 1px solid var(--line); }
+  .preset { flex: 1; min-width: 0; min-height: 26px; padding: 0 4px; border: 1px solid var(--line); color: var(--muted); background: transparent; cursor: pointer; font-size: 10px; white-space: nowrap; }
+  .preset:hover { color: var(--text); border-color: var(--line-bright); background: var(--raised); }
+
+  .property-area { min-height: 0; overflow: auto; padding: 12px 16px 14px; }
+  .property-area::-webkit-scrollbar { width: 6px; }
+  .property-area::-webkit-scrollbar-thumb { background: var(--line-bright); }
+  .section { margin-bottom: 14px; }
+  .section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; color: var(--muted); font: 9px/1.2 monospace; letter-spacing: 1px; text-transform: uppercase; }
+  .section-head::after { content: ""; height: 1px; flex: 1; background: var(--line); }
+  .property-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .prop { position: relative; min-height: 34px; padding: 0 8px; border: 1px solid var(--line); color: var(--muted); background: var(--panel); cursor: pointer; overflow: hidden; }
+  .prop::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: transparent; }
+  .prop:hover:not(:disabled) { color: var(--text); border-color: var(--line-bright); background: var(--raised); }
+  .prop.selected { color: var(--text); border-color: rgba(184,243,74,.5); background: var(--signal-soft); }
+  .prop.selected::before { background: var(--signal); }
+  .prop:disabled { cursor: not-allowed; opacity: .28; }
+
+  footer { border-top: 1px solid var(--line); background: #101214; }
+  .selection-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 16px 7px; color: var(--muted); font-size: 10px; }
+  #selectedCount { color: var(--cyan); }
+  .action-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; padding: 0 16px 10px; }
+  #trackingButton { min-height: 38px; border: 1px solid var(--signal); color: #11150c; background: var(--signal); font-weight: 700; letter-spacing: .4px; cursor: pointer; }
+  #trackingButton:hover { filter: brightness(1.06); }
+  #trackingButton.stop { color: var(--text); border-color: var(--line-bright); background: var(--raised); }
+  #trackingButton:disabled { cursor: not-allowed; opacity: .35; filter: none; }
+  #refreshButton { width: 42px; min-height: 38px; border: 1px solid var(--line); color: var(--muted); background: var(--panel); cursor: pointer; font-size: 17px; }
+  #refreshButton:hover { color: var(--text); border-color: var(--line-bright); }
+  #log { min-height: 25px; max-height: 50px; overflow: auto; padding: 0 16px 10px; color: var(--faint); font: 9.5px/1.4 "Microsoft YaHei UI", sans-serif; }
+  .log-entry.ok { color: var(--signal); }
+  .log-entry.error { color: var(--error); }
+  .log-entry.neutral { color: var(--muted); }
+</style>
+</head>
+<body>
+<main class="shell">
+  <header>
+    <div class="brand">
+      <div class="brand-left"><div class="mark" aria-hidden="true"></div><div><h1>SYNC SAME PROPS</h1><div class="subtitle">自定义属性组合 · 实时批量跟踪</div></div></div>
+      <span class="version">2.0.1</span>
+    </div>
+  </header>
+
+  <div class="status-wrap">
+    <div id="status" class="status warn">
+      <span class="status-dot"></span>
+      <div class="status-main"><div id="statusTitle">请单选一个基准对象</div><div id="statusMeta">选择后可用属性会自动识别</div></div>
+      <strong id="matchCount">—</strong>
+    </div>
+  </div>
+
+  <div class="presets">
+    <button class="preset" data-preset="text">文字常用</button>
+    <button class="preset" data-preset="visual">视觉样式</button>
+    <button class="preset" data-preset="size">尺寸形态</button>
+    <button class="preset" data-preset="clear">清空</button>
+  </div>
+
+  <div id="propertyArea" class="property-area"></div>
+
+  <footer>
+    <div class="selection-line"><span>已选 <b id="selectedCount">0</b> 个属性</span><span id="selectionHint">先选择基准对象</span></div>
+    <div class="action-row"><button id="trackingButton" disabled>开始跟踪</button><button id="refreshButton" title="重新匹配当前基准">↻</button></div>
+    <div id="log"><div class="log-entry neutral">选择属性后开始跟踪；修改基准对象即可同步。</div></div>
+  </footer>
+</main>
+
+<script>
+  'use strict';
+  var state = { tracking: false, selectedProps: [], selectionCount: 0, properties: [], masterOk: false, linkedCount: 0 };
+  var groupOrder = ['paint', 'appearance', 'geometry', 'text'];
+  var groupLabels = { paint: 'Paint / 描边与填充', appearance: 'Appearance / 外观', geometry: 'Geometry / 尺寸形态', text: 'Typography / 文本' };
+  var presets = {
+    text: ['fontName', 'fontSize', 'fills', 'lineHeight', 'letterSpacing'],
+    visual: ['fills', 'strokes', 'strokeWeight', 'opacity', 'effects', 'blendMode'],
+    size: ['width', 'height', 'cornerRadius'],
+    clear: []
+  };
+
+  function post(message) { parent.postMessage({ pluginMessage: message }, '*'); }
+  function el(id) { return document.getElementById(id); }
+
+  function setProperties(properties) {
+    post({ type: 'set-properties', properties: properties });
+  }
+
+  function toggleProperty(key) {
+    var next = state.selectedProps.slice();
+    var index = next.indexOf(key);
+    if (index === -1) next.push(key); else next.splice(index, 1);
+    setProperties(next);
+  }
+
+  function renderProperties() {
+    var area = el('propertyArea');
+    area.textContent = '';
+    groupOrder.forEach(function (group) {
+      var defs = state.properties.filter(function (prop) { return prop.group === group; });
+      if (!defs.length) return;
+      var section = document.createElement('section');
+      section.className = 'section';
+      var head = document.createElement('div');
+      head.className = 'section-head';
+      head.textContent = groupLabels[group];
+      var grid = document.createElement('div');
+      grid.className = 'property-grid';
+      defs.forEach(function (prop) {
+        var button = document.createElement('button');
+        var selected = state.selectedProps.indexOf(prop.key) > -1;
+        button.className = 'prop' + (selected ? ' selected' : '');
+        button.textContent = prop.label;
+        button.disabled = !prop.available && !selected;
+        button.title = prop.available ? prop.key : '当前基准对象不支持此属性';
+        button.addEventListener('click', function () { toggleProperty(prop.key); });
+        grid.appendChild(button);
+      });
+      section.appendChild(head);
+      section.appendChild(grid);
+      area.appendChild(section);
+    });
+  }
+
+  function renderStatus() {
+    var status = el('status');
+    var title = el('statusTitle');
+    var meta = el('statusMeta');
+    var hint = el('selectionHint');
+    var button = el('trackingButton');
+    var unavailableSelected = state.properties.some(function (prop) {
+      return state.selectedProps.indexOf(prop.key) > -1 && !prop.available;
+    });
+    var canStart = state.selectionCount === 1 && state.selectedProps.length > 0 && !unavailableSelected;
+
+    if (state.tracking && state.masterOk) {
+      status.className = 'status ready';
+      title.textContent = '正在跟踪 · ' + (state.masterName || state.masterType || '基准对象');
+      meta.textContent = state.selectedProps.length + ' 个属性组成匹配规则';
+      hint.textContent = '修改基准，匹配对象自动跟随';
+      el('matchCount').textContent = String(state.linkedCount);
+    } else {
+      status.className = 'status warn';
+      el('matchCount').textContent = '—';
+      if (state.selectionCount === 0) {
+        title.textContent = '请单选一个基准对象'; meta.textContent = '选择后可用属性会自动识别';
+      } else if (state.selectionCount > 1) {
+        title.textContent = '当前选择了多个对象'; meta.textContent = '只保留一个对象作为同步基准';
+      } else if (state.reason) {
+        title.textContent = state.reason; meta.textContent = '调整属性组合后可重新开始';
+      } else {
+        title.textContent = state.masterName || state.masterType || '基准对象已选择'; meta.textContent = '勾选需要参与匹配与同步的属性';
+      }
+      hint.textContent = state.selectionCount === 1 ? '基准已选择' : '等待基准对象';
+    }
+
+    el('selectedCount').textContent = String(state.selectedProps.length);
+    button.disabled = !state.tracking && !canStart;
+    button.className = state.tracking ? 'stop' : '';
+    button.textContent = state.tracking ? '停止跟踪' : '开始跟踪';
+  }
+
+  function render(next) {
+    state = next;
+    renderProperties();
+    renderStatus();
+  }
+
+  function addLog(text, tone) {
+    var row = document.createElement('div');
+    row.className = 'log-entry ' + (tone || 'neutral');
+    row.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' · ' + text;
+    var log = el('log');
+    log.insertBefore(row, log.firstChild);
+    while (log.children.length > 3) log.removeChild(log.lastChild);
+  }
+
+  document.querySelectorAll('.preset').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var wanted = presets[button.dataset.preset] || [];
+      var available = state.properties.filter(function (prop) { return prop.available; }).map(function (prop) { return prop.key; });
+      setProperties(wanted.filter(function (key) { return available.indexOf(key) > -1; }));
+    });
+  });
+
+  el('trackingButton').addEventListener('click', function () { post({ type: 'set-tracking', value: !state.tracking }); });
+  el('refreshButton').addEventListener('click', function () { post({ type: 'refresh' }); addLog('已重新匹配当前基准', 'neutral'); });
+  window.onmessage = function (event) {
+    var message = event.data && event.data.pluginMessage;
+    if (!message) return;
+    if (message.type === 'state') render(message);
+    if (message.type === 'result') addLog(message.text, message.tone);
+  };
+  post({ type: 'refresh' });
+</script>
+</body>
+</html>
