@@ -24,6 +24,15 @@ Choose from 23 properties across fills and strokes, appearance, geometry, and ty
 
 SyncSameProps also handles font loading, real width and height updates through Figma's resize API, and Figma property-menu hover previews without losing the final synchronized change.
 
+## Quick start
+
+1. Run the plugin and select exactly one reference object.
+2. Choose one or more properties in the panel.
+3. Start tracking and edit the reference object in Figma.
+4. Keep the plugin panel open while matching objects update automatically.
+
+For local development installation and troubleshooting, see the complete guide in the GitHub repository.
+
 ## Suggested tags
 
 batch edit, productivity, typography, style, sync, design system, 批量修改, 属性同步
